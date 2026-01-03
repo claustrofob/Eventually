@@ -19,6 +19,5 @@ let package = Package(
         .target(
             name: "Eventually"
         ),
-
     ]
 )
