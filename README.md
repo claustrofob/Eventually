@@ -11,6 +11,10 @@ A SwiftUI layout engine for displaying overlapping calendar events with intellig
 
 Eventually is a powerful SwiftUI custom layout that automatically arranges overlapping calendar events in a clean, space-efficient timeline view. It intelligently positions events side-by-side when they overlap, ensuring titles remain visible and events occupy the widest possible area — exactly how modern calendar apps handle event visualization.
 
+<img width="201" height="437" alt="eventually_portrait" src="https://github.com/user-attachments/assets/48163800-75b4-4f03-88e0-ace4b1aa450a" />
+<img width="437" height="201" alt="eventually_landscape" src="https://github.com/user-attachments/assets/360c1544-ef7a-41ce-bd09-643edecc1064" />
+
+
 ### Features
 
 - 🎯 **Smart Positioning**: Automatically arranges overlapping events to maximize visibility
