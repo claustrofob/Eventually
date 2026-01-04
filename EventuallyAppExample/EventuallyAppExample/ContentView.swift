@@ -7,12 +7,20 @@ import Eventually
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.pixelLength) private var pixel
+
     private let hourSlotHeight: CGFloat = 60
     private let timeFormatStyle = Date.FormatStyle()
         .hour(.twoDigits(amPM: .omitted))
         .minute(.twoDigits)
         .locale(Locale(identifier: "en_GB"))
-    private let startOfDay = Calendar.current.startOfDay(for: Date())
+    private let startOfDay: Date
+    private let events: [Event]
+
+    init() {
+        startOfDay = Calendar.current.startOfDay(for: Date())
+        events = Event.mocks(for: startOfDay)
+    }
 
     var body: some View {
         ScrollView(.vertical) {
@@ -45,7 +53,7 @@ struct ContentView: View {
                 .frame(width: 32, alignment: .trailing)
             Color.gray
                 .frame(maxWidth: .infinity)
-                .frame(height: 1 / UIScreen.main.scale)
+                .frame(height: pixel)
         }
         .padding(EdgeInsets(top: 16, leading: 12, bottom: 16, trailing: 0))
         .frame(height: 0)
@@ -53,7 +61,12 @@ struct ContentView: View {
 
     @ViewBuilder
     private func eventsLayoutView() -> some View {
-        EventuallyLayout(startOfDay: startOfDay, hourSlotHeight: hourSlotHeight) {}
+        EventuallyLayout(startOfDay: startOfDay, hourSlotHeight: hourSlotHeight) {
+            ForEach(events, id: \.self) { event in
+                EventView(title: event.title)
+                    .eventuallyDateIntervalLayout(event.interval)
+            }
+        }
     }
 }
 

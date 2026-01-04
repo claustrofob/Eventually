@@ -6,12 +6,14 @@
 import SwiftUI
 
 struct EventView: View {
+    @Environment(\.pixelLength) private var pixel
+
     let title: String
 
     var body: some View {
         VStack(alignment: .leading) {
             Text(title)
-                .foregroundStyle(.blue)
+                .foregroundStyle(.eventTitle)
                 .font(.caption2)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -25,7 +27,11 @@ struct EventView: View {
             maxHeight: .infinity,
             alignment: .topLeading
         )
-        .background(.blue.opacity(0.2))
-        .cornerRadius(4)
+        .background(.eventBackground)
+        .clipShape(RoundedRectangle(cornerSize: CGSize(width: 4, height: 4)))
+        .overlay(
+            RoundedRectangle(cornerSize: CGSize(width: 4, height: 4))
+                .stroke(Color.white, lineWidth: pixel * 2)
+        )
     }
 }

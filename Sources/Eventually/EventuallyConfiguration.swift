@@ -8,6 +8,7 @@ import Foundation
 public struct EventuallyConfiguration: Sendable {
     public let hSpacing: CGFloat
     public let hPadding: CGFloat
+    // the layout ensures event titles remain visible
     public let titleHeight: CGFloat
     public let minEventWidth: CGFloat
     public let minEventHeight: CGFloat

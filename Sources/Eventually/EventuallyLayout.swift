@@ -142,7 +142,8 @@ public struct EventuallyLayout: Layout {
 
                 let originY = max(interval.start.timeIntervalSince(startOfDay), 0) * pointsPerSecond
                 let maxHeight = fullHeight - originY
-                let height = max(min(interval.duration * pointsPerSecond, maxHeight), config.minEventHeight)
+                // round it down so fractional values do not accidentally intersect, and -1 to make a padding between vertical events
+                let height = max(min(interval.duration * pointsPerSecond, maxHeight), config.minEventHeight).rounded(to: 2, rule: .down) - 1
                 eventRect = CGRect(
                     x: 0,
                     y: originY,
@@ -184,28 +185,29 @@ public struct EventuallyLayout: Layout {
                 intersectedOrigins.append(CGPoint(x: layoutSize.width, y: 0))
                 intersectedOrigins.sort { $0.x < $1.x }
 
-                var frames = [CGRect]()
+                // event frames must fit into frame containers
+                var frameContainers = [CGRect]()
                 var frameHPaddings = [CGFloat]()
                 for i in 0 ..< (intersectedOrigins.count - 1) {
                     if (intersectedOrigins[i].x + config.hPadding) < intersectedOrigins[i + 1].x {
-                        frames.append(CGRect(
+                        frameContainers.append(CGRect(
                             origin: intersectedOrigins[i],
                             size: CGSize(
                                 width: intersectedOrigins[i + 1].x - intersectedOrigins[i].x,
                                 height: combinedHStackRect.height
                             )
                         ))
-                        frameHPaddings.append(frames.count == 1 && i == 0 ? 0 : config.hPadding)
+                        frameHPaddings.append(frameContainers.count == 1 && i == 0 ? 0 : config.hPadding)
                     }
                 }
 
-                // Distrubute events among frames
+                // Distrubute events among frame containers
                 var frameEvents = [Int: [Int]]() // [frame index: [event index]]
                 for eventIndex in hStackStartIndex ..< eventFrames.count {
                     let eventRect = eventFrames[eventIndex]
                     var currentWidth: CGFloat = 0
                     var currentFrameIndex = 0
-                    for (frameIndex, frame) in frames.enumerated() {
+                    for (frameIndex, frame) in frameContainers.enumerated() {
                         // float numbers may differ in a very small fraction like 0.000000000001
                         // this may impact where event rect will be placed.
                         let frame = frame.rounded(to: 2)
@@ -224,7 +226,7 @@ public struct EventuallyLayout: Layout {
                 }
 
                 for (frameIndex, eventIndices) in frameEvents {
-                    let frame = frames[frameIndex]
+                    let frame = frameContainers[frameIndex]
                     let frameHPadding = frameHPaddings[frameIndex]
                     let eventWidth = max((frame.width - frameHPadding) / CGFloat(eventIndices.count), config.minEventWidth)
                     for (i, eventIndex) in eventIndices.enumerated() {
@@ -233,7 +235,7 @@ public struct EventuallyLayout: Layout {
 
                         // if the final event frame does not fit the container frame, then just collapse the final frame
                         // so it is not visible and does not affect the layout of other events
-                        if originX + eventWidth > frame.maxY {
+                        if originX + eventWidth > frame.maxX {
                             eventRect.size = .zero
                             eventRect.origin = .zero
                         } else {

@@ -6,8 +6,8 @@
 import Foundation
 
 extension CGFloat {
-    func rounded(to places: Int) -> CGFloat {
+    func rounded(to places: Int, rule: FloatingPointRoundingRule = .toNearestOrAwayFromZero) -> CGFloat {
         let divisor = pow(10.0, CGFloat(places))
-        return (self * divisor).rounded() / divisor
+        return (self * divisor).rounded(rule) / divisor
     }
 }
