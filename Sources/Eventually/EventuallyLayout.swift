@@ -159,6 +159,12 @@ public struct EventuallyLayout: Layout {
             }
 
             if shouldProcessHStack {
+                // Only process if there are frames to process in the current HStack
+                guard hStackStartIndex < eventFrames.count else {
+                    hStackStartIndex = index
+                    continue
+                }
+                
                 // This rect takes full layout width, vertical position and height is a union of events positions and heights in a stack.
                 // It is used to get intersections with previous events and form a set of frames where events can be placed.
                 let combinedHStackRect = (hStackStartIndex ..< eventFrames.count).reduce(
