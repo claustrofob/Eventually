@@ -211,31 +211,34 @@ public struct EventuallyLayout: Layout {
                 }
             }
 
+            // if no appropriate containers where created, create an empty one. We still must call `subview.place`
+            // with .zero rect for invisible events
+            if frameContainers.isEmpty {
+                frameContainers = [.zero]
+            }
+
             // Distrubute events among frame containers
             var frameEvents = [Int: [Int]]() // [frame index: [event index]]
-            // skip events rendering if no containers with min space avalable.
-            if !frameContainers.isEmpty {
-                for eventIndex in hStackStartIndex ..< eventFrames.count {
-                    let eventRect = eventFrames[eventIndex]
-                    var currentWidth: CGFloat = 0
-                    var currentFrameIndex = 0
-                    for (frameIndex, frame) in frameContainers.enumerated() {
-                        // float numbers may differ in a very small fraction like 0.000000000001
-                        // this may impact where event rect will be placed.
-                        let frame = frame.rounded(to: 2)
-                        let frameHPadding = frameHPaddings[frameIndex]
-                        let frameAvailableWidth = (frame.width - frameHPadding) / CGFloat(frameEvents[frameIndex, default: []].count + 1)
-                        if
-                            eventRect.minY >= frame.minY,
-                            eventRect.minY <= frame.maxY,
-                            currentWidth < frameAvailableWidth
-                        {
-                            currentWidth = frameAvailableWidth
-                            currentFrameIndex = frameIndex
-                        }
+            for eventIndex in hStackStartIndex ..< eventFrames.count {
+                let eventRect = eventFrames[eventIndex]
+                var currentWidth: CGFloat = 0
+                var currentFrameIndex = 0
+                for (frameIndex, frame) in frameContainers.enumerated() {
+                    // float numbers may differ in a very small fraction like 0.000000000001
+                    // this may impact where event rect will be placed.
+                    let frame = frame.rounded(to: 2)
+                    let frameHPadding = frameHPaddings[frameIndex]
+                    let frameAvailableWidth = (frame.width - frameHPadding) / CGFloat(frameEvents[frameIndex, default: []].count + 1)
+                    if
+                        eventRect.minY >= frame.minY,
+                        eventRect.minY <= frame.maxY,
+                        currentWidth < frameAvailableWidth
+                    {
+                        currentWidth = frameAvailableWidth
+                        currentFrameIndex = frameIndex
                     }
-                    frameEvents[currentFrameIndex, default: []].append(eventIndex)
                 }
+                frameEvents[currentFrameIndex, default: []].append(eventIndex)
             }
 
             for (frameIndex, eventIndices) in frameEvents {
