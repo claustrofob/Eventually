@@ -215,6 +215,7 @@ public struct EventuallyLayout: Layout {
             // with .zero rect for invisible events
             if frameContainers.isEmpty {
                 frameContainers = [.zero]
+                frameHPaddings = [0]
             }
 
             // Distrubute events among frame containers
