@@ -132,6 +132,12 @@ public struct EventuallyLayout: Layout {
             var eventRect: CGRect?
             let shouldProcessHStack: Bool
 
+            defer {
+                if let eventRect {
+                    eventFrames.append(eventRect)
+                }
+            }
+
             if !isLastElement {
                 let subview = sortedSubviews[index].1
                 guard
@@ -154,57 +160,61 @@ public struct EventuallyLayout: Layout {
                 )
 
                 let delta = index != 0 ? originY - eventFrames[hStackStartIndex].origin.y : 0
-
                 shouldProcessHStack = delta > config.titleHeight
             } else {
                 shouldProcessHStack = true
             }
 
-            if shouldProcessHStack {
-                // This rect takes full layout width, vertical position and height is a union of events positions and heights in a stack.
-                // It is used to get intersections with previous events and form a set of frames where events can be placed.
-                let combinedHStackRect = (hStackStartIndex ..< eventFrames.count).reduce(
-                    into: eventFrames[hStackStartIndex]
-                ) { result, index in
-                    result = result.union(eventFrames[index])
-                }
+            guard shouldProcessHStack else {
+                continue
+            }
 
-                // find all X coordinates that intersects combinedHStackRect and splits it into frame containers
-                // add the layout left edge
-                var intersectedOrigins: [CGPoint] = [combinedHStackRect.origin]
-                if hStackStartIndex > 0 {
-                    for eventIndex in 0 ..< hStackStartIndex {
-                        var rect = eventFrames[eventIndex]
-                        rect.origin.y += config.titleHeight
-                        rect.size.height -= config.titleHeight
-                        if rect.intersects(combinedHStackRect) {
-                            let intersection = rect.intersection(combinedHStackRect)
-                            intersectedOrigins.append(intersection.origin)
-                        }
+            // This rect takes full layout width, vertical position and height is a union of events positions and heights in a stack.
+            // It is used to get intersections with previous events and form a set of frames where events can be placed.
+            let combinedHStackRect = (hStackStartIndex ..< eventFrames.count).reduce(
+                into: eventFrames[hStackStartIndex]
+            ) { result, index in
+                result = result.union(eventFrames[index])
+            }
+
+            // find all X coordinates that intersects combinedHStackRect and splits it into frame containers
+            // add the layout left edge
+            var intersectedOrigins: [CGPoint] = [combinedHStackRect.origin]
+            if hStackStartIndex > 0 {
+                for eventIndex in 0 ..< hStackStartIndex {
+                    var rect = eventFrames[eventIndex]
+                    rect.origin.y += config.titleHeight
+                    rect.size.height -= config.titleHeight
+                    if rect.intersects(combinedHStackRect) {
+                        let intersection = rect.intersection(combinedHStackRect)
+                        intersectedOrigins.append(intersection.origin)
                     }
                 }
-                // add the layout right edge
-                intersectedOrigins.append(CGPoint(x: layoutSize.width, y: 0))
-                intersectedOrigins.sort { $0.x < $1.x }
+            }
+            // add the layout right edge
+            intersectedOrigins.append(CGPoint(x: layoutSize.width, y: 0))
+            intersectedOrigins.sort { $0.x < $1.x }
 
-                // event frames must fit into frame containers
-                var frameContainers = [CGRect]()
-                var frameHPaddings = [CGFloat]()
-                for i in 0 ..< (intersectedOrigins.count - 1) {
-                    if (intersectedOrigins[i].x + config.hPadding) < intersectedOrigins[i + 1].x {
-                        frameContainers.append(CGRect(
-                            origin: intersectedOrigins[i],
-                            size: CGSize(
-                                width: intersectedOrigins[i + 1].x - intersectedOrigins[i].x,
-                                height: combinedHStackRect.height
-                            )
-                        ))
-                        frameHPaddings.append(frameContainers.count == 1 && i == 0 ? 0 : config.hPadding)
-                    }
+            // event frames must fit into frame containers
+            var frameContainers = [CGRect]()
+            var frameHPaddings = [CGFloat]()
+            for i in 0 ..< (intersectedOrigins.count - 1) {
+                if (intersectedOrigins[i].x + config.hPadding) < intersectedOrigins[i + 1].x {
+                    frameContainers.append(CGRect(
+                        origin: intersectedOrigins[i],
+                        size: CGSize(
+                            width: intersectedOrigins[i + 1].x - intersectedOrigins[i].x,
+                            height: combinedHStackRect.height
+                        )
+                    ))
+                    frameHPaddings.append(frameContainers.count == 1 && i == 0 ? 0 : config.hPadding)
                 }
+            }
 
-                // Distrubute events among frame containers
-                var frameEvents = [Int: [Int]]() // [frame index: [event index]]
+            // Distrubute events among frame containers
+            var frameEvents = [Int: [Int]]() // [frame index: [event index]]
+            // skip events rendering if no containers with min space avalable.
+            if !frameContainers.isEmpty {
                 for eventIndex in hStackStartIndex ..< eventFrames.count {
                     let eventRect = eventFrames[eventIndex]
                     var currentWidth: CGFloat = 0
@@ -226,49 +236,45 @@ public struct EventuallyLayout: Layout {
                     }
                     frameEvents[currentFrameIndex, default: []].append(eventIndex)
                 }
+            }
 
-                for (frameIndex, eventIndices) in frameEvents {
-                    let frame = frameContainers[frameIndex]
-                    let frameHPadding = frameHPaddings[frameIndex]
-                    let eventWidth = max((frame.width - frameHPadding) / CGFloat(eventIndices.count), config.minEventWidth)
-                    for (i, eventIndex) in eventIndices.enumerated() {
-                        let originX = frame.minX + eventWidth * CGFloat(i) + frameHPadding
-                        var eventRect = eventFrames[eventIndex]
+            for (frameIndex, eventIndices) in frameEvents {
+                let frame = frameContainers[frameIndex]
+                let frameHPadding = frameHPaddings[frameIndex]
+                let eventWidth = max((frame.width - frameHPadding) / CGFloat(eventIndices.count), config.minEventWidth)
+                for (i, eventIndex) in eventIndices.enumerated() {
+                    let originX = frame.minX + eventWidth * CGFloat(i) + frameHPadding
+                    var eventRect = eventFrames[eventIndex]
 
-                        // if the final event frame does not fit the container frame, then just collapse the final frame
-                        // so it is not visible and does not affect the layout of other events
-                        if originX + eventWidth > frame.maxX {
-                            eventRect.size = .zero
-                            eventRect.origin = .zero
-                        } else {
-                            eventRect.size.width = eventWidth
-                            eventRect.origin.x = originX
-                        }
-                        eventFrames[eventIndex] = eventRect
-
-                        let finalFrame = CGRect(
-                            origin: eventRect.origin,
-                            size: CGSize(
-                                width: max(eventRect.size.width - config.hSpacing, 0),
-                                height: eventRect.size.height
-                            )
-                        )
-
-                        let size = ProposedViewSize(finalFrame.size)
-                        sortedSubviews[eventIndex].1.place(at: CGPoint(
-                            x: bounds.minX + finalFrame.minX,
-                            y: bounds.minY + finalFrame.minY
-                        ), proposal: size)
-                        cache.frames?[sortedSubviews[eventIndex].0] = finalFrame
+                    // if the final event frame does not fit the container frame, then just collapse the final frame
+                    // so it is not visible and does not affect the layout of other events
+                    if originX + eventWidth > frame.maxX {
+                        eventRect.size = .zero
+                        eventRect.origin = .zero
+                    } else {
+                        eventRect.size.width = eventWidth
+                        eventRect.origin.x = originX
                     }
+                    eventFrames[eventIndex] = eventRect
+
+                    let finalFrame = CGRect(
+                        origin: eventRect.origin,
+                        size: CGSize(
+                            width: max(eventRect.size.width - config.hSpacing, 0),
+                            height: eventRect.size.height
+                        )
+                    )
+
+                    let size = ProposedViewSize(finalFrame.size)
+                    sortedSubviews[eventIndex].1.place(at: CGPoint(
+                        x: bounds.minX + finalFrame.minX,
+                        y: bounds.minY + finalFrame.minY
+                    ), proposal: size)
+                    cache.frames?[sortedSubviews[eventIndex].0] = finalFrame
                 }
-
-                hStackStartIndex = index
             }
 
-            if let eventRect {
-                eventFrames.append(eventRect)
-            }
+            hStackStartIndex = index
         }
     }
 }
