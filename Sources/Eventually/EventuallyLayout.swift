@@ -28,7 +28,7 @@ import SwiftUI
 public struct EventuallyLayout: Layout {
     public struct Cache {
         var frames: [Int: CGRect]?
-        var layoutSize: ProposedViewSize?
+        var layoutWidth: CGFloat?
     }
 
     // This must be the beginning of date to display. 00:00:00 in local time
@@ -67,7 +67,7 @@ public struct EventuallyLayout: Layout {
         cache: inout Cache
     ) {
         guard
-            cache.layoutSize == proposal, let frames = cache.frames
+            cache.layoutWidth == proposal.width, let frames = cache.frames
         else {
             calculateLayout(
                 in: bounds,
@@ -99,7 +99,7 @@ public struct EventuallyLayout: Layout {
         cache: inout Cache
     ) {
         cache.frames = [:]
-        cache.layoutSize = proposal
+        cache.layoutWidth = proposal.width
 
         guard !subviews.isEmpty else {
             return
