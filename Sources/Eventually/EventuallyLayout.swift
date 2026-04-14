@@ -28,7 +28,7 @@ import SwiftUI
 public struct EventuallyLayout: Layout {
     public struct Cache {
         var frames: [Int: CGRect]?
-        var layoutWidth: CGFloat?
+        var layoutSize: ProposedViewSize?
     }
 
     // This must be the beginning of date to display. 00:00:00 in local time
@@ -60,11 +60,6 @@ public struct EventuallyLayout: Layout {
         Cache()
     }
 
-    public func updateCache(_ cache: inout Cache, subviews _: Subviews) {
-        cache.frames = nil
-        cache.layoutWidth = nil
-    }
-
     public func placeSubviews(
         in bounds: CGRect,
         proposal: ProposedViewSize,
@@ -72,7 +67,7 @@ public struct EventuallyLayout: Layout {
         cache: inout Cache
     ) {
         guard
-            cache.layoutWidth == proposal.width, let frames = cache.frames
+            cache.layoutSize == proposal, let frames = cache.frames
         else {
             calculateLayout(
                 in: bounds,
@@ -103,12 +98,17 @@ public struct EventuallyLayout: Layout {
         subviews: Subviews,
         cache: inout Cache
     ) {
+        cache.frames = [:]
+        cache.layoutSize = proposal
+
+        guard !subviews.isEmpty else {
+            return
+        }
+
         let layoutSize = proposal.replacingUnspecifiedDimensions()
         let titleHeightInSeconds = 3600 / hourSlotHeight * config.titleHeight
         let pointsPerSecond = hourSlotHeight / 3600
         let fullHeight = 24 * 3600 * pointsPerSecond
-        cache.frames = [:]
-        cache.layoutWidth = proposal.width
 
         let sortedSubviews = subviews.enumerated().sorted { first, second in
             guard
